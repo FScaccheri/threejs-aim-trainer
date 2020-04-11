@@ -3,16 +3,15 @@
 <head lang="en">
     
     <meta charset="UTF-8">
-    <title>Raycasting</title>
+    <title>Aim trainer</title>
     <style>
 		body { margin: 0; }
 		canvas { display: block; }
 	</style>
     <link rel="stylesheet" type="text/css" href="css/global.css"></link>
 
-    <script src="js/jquery.min.js"></script>    
     <script src="js/three.js"></script>    
-    <script src="js/OrbitControls.js"></script>  
+    <script src="js/dat.gui.js"></script>    
 
 </head>
 <body>
@@ -36,8 +35,6 @@
         renderer.setClearColor(0x242424, 1);
 		document.body.appendChild( renderer.domElement );
 
-        //var controls = new THREE.OrbitControls(camera, renderer.domElement);
-
         var ambientLight = new THREE.AmbientLight(0xFFFFFF);
         scene.add(ambientLight);
 
@@ -59,17 +56,43 @@
 		plane = new THREE.Mesh( planeGeometry, new THREE.MeshBasicMaterial( { visible: false } ) );
 		scene.add( plane );
         objects.push(plane);
-        
-        /// DEBUG CIRCLES 
-        /*
-        for (var x=-180; x <= 180; x+=20 ){
-            for (var y=-80; y<= 80; y+=20){
-                createCircle().position.set(x, y, 1);
-            }
-        }*/
 
         var raycaster = new THREE.Raycaster();
         var mouse = new THREE.Vector2();
+
+        var Difficulty = function() {
+            this.circleRadius = 10;
+            this.spawnRate = 2;
+            this.minimumSpawnTime = 1;
+            this.despawnTime = 3;
+
+            this.level = "Medium"
+
+            this.changeDifficulty = function() {
+                switch(this.level) {
+                    case "Easy":
+                        this.updateSettings(10, 3, 1, 3);
+                        break;
+                    case "Medium":
+                        this.updateSettings(7, 1.5, 0.5, 1);
+                        break;
+                    case "Hard":
+                        this.updateSettings(3, 0.5, 0.1, 1);
+                        break;
+                }
+            }
+
+            this.updateSettings = function(radius, spawnRate, minSpawnRate, despawnTime) {
+                this.circleRadius = radius;
+                this.spawnRate = spawnRate;
+                this.minSpawnRate = minSpawnRate;
+                this.despawnTime = despawnTime;
+            }
+        }
+        
+        var difficulty = new Difficulty();
+        var gui = new dat.GUI();
+        gui.add(difficulty, 'level', ["Easy", "Medium", "Hard"]);
 
         function onMouseMove( event ) {
 
@@ -98,7 +121,7 @@
         }
 
         function createCircle() {
-            var circleGeometry = new THREE.CircleGeometry(5, 32);
+            var circleGeometry = new THREE.CircleGeometry(difficulty.circleRadius, 32);
 		    var circleMaterial = new THREE.MeshPhongMaterial( { color: originalColor } );
             return new THREE.Mesh( circleGeometry, circleMaterial );
         }
@@ -122,10 +145,11 @@
         var nextCircleSpawnTime = 0;
 		function animate(time) {
             time *= 0.001;
+            difficulty.changeDifficulty();
             updateCircles(time);
 
             if (time > nextCircleSpawnTime) {
-                nextCircleSpawnTime = time + 1.5* Math.random();
+                nextCircleSpawnTime = time + difficulty.spawnRate * Math.random() + difficulty.minimumSpawnTime;
                 spawnCircle(time);
             }
 
@@ -139,7 +163,7 @@
             for (var i = 0; i < circles.length; i++){
                 var circle = circles[i];
                 circle.material.color.set(originalColor);
-                if ((time - circle.spawnTime) > 1) despawnCircle(circle);
+                if ((time - circle.spawnTime) > difficulty.despawnTime) despawnCircle(circle);
             }
 
             // update the picking ray with the camera and mouse position
